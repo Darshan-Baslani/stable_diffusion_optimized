@@ -227,9 +227,9 @@ class UNET(nn.Module):
 
         self.bottleneck = SwitchSequential(
             # (batch, 1280, height/64, width/64)
-            UNET_ResidualBlock(1280, 1280), 
-            UNET_AttentionBlock(8, 160), 
-            UNET_ResidualBlock(1280, 1280), 
+            UNET_residualBlock(1280, 1280), 
+            UNET_attentionBlock(8, 160), 
+            UNET_residualBlock(1280, 1280), 
         )
 
         self.decoders = nn.ModuleList([

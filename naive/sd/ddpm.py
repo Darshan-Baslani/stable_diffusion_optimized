@@ -41,6 +41,17 @@ class DDMPMSampler:
 
         return variance 
 
+    def set_strength(self, strength=1):
+        """
+            Set how much noise to add to the input image. 
+            More noise (strength ~ 1) means that the output will be further from the input image.
+            Less noise (strength ~ 0) means that the output will be closer to the input image.
+        """
+        # start_step is the number of noise levels to skip
+        start_step = self.num_inference_steps - int(self.num_inference_steps * strength)
+        self.timesteps = self.timesteps[start_step:]
+        self.start_step = start_step
+
     def step(self, timestep: int, latents: torch.Tensor, model_output: torch.Tensor):
         prev_timestep = self._get_previous_timestep(timestep)
 

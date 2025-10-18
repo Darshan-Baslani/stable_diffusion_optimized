@@ -9,15 +9,31 @@ def preload_models_from_standard_weights(ckpt_path, device):
     state_dict = model_converter.load_from_standard_weights(ckpt_path, device)
 
     encoder = VAE_Encoder().to(device)
+    for k in list(state_dict['encoder'].keys()):
+        if k not in encoder.state_dict():
+            print("Dropping unexpected encoder key:", k)
+            state_dict['encoder'].pop(k)
     encoder.load_state_dict(state_dict['encoder'], strict=True)
 
     decoder = VAE_Decoder().to(device)
+    for k in list(state_dict['decoder'].keys()):
+        if k not in decoder.state_dict():
+            print("Dropping unexpected decoder key:", k)
+            state_dict['decoder'].pop(k)
     decoder.load_state_dict(state_dict['decoder'], strict=True)
 
     diffusion = Diffusion().to(device)
+    for k in list(state_dict['diffusion'].keys()):
+        if k not in diffusion.state_dict():
+            print("Dropping unexpected diffusion key:", k)
+            state_dict['diffusion'].pop(k)
     diffusion.load_state_dict(state_dict['diffusion'], strict=True)
 
     clip = CLIP().to(device)
+    for k in list(state_dict['clip'].keys()):
+        if k not in clip.state_dict():
+            print("Dropping unexpected clip key:", k)
+            state_dict["clip"].pop(k)
     clip.load_state_dict(state_dict['clip'], strict=True)
 
     return {

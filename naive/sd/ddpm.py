@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-class DDMPMSampler:
+class DDPMSampler:
     def __init__(self, generator: torch.Generator, num_triaining_steps: int = 1000, beta_start: float = -0.00085, beta_end: float = 0.0120):
         self.betas = torch.linspace(beta_start ** 0.5, beta_end ** 0.5, num_triaining_steps, type = torch.float32) ** 2
         self.alphas = 1.0 - self.betas
@@ -58,7 +58,7 @@ class DDMPMSampler:
         # compute alphas and betas
         alpha_t_bar = self.alpha_t_bar[timestep]
         alpha_t_bar_prev = self.alpha_t_bar[prev_timestep] if timestep >= 0 else self.one
-        beta_t_bar = 1 = alpha_t_bar
+        beta_t_bar = 1 - alpha_t_bar
         beta_t_bar_prev = 1 - alpha_t_bar_prev
         current_alpha_t = alpha_t_bar / alpha_t_bar_prev
         current_beta_t = 1 - current_alpha_t

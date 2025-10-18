@@ -189,7 +189,7 @@ class UNET_attentionBlock(nn.Module):
         return self.conv_output(x) + residue_long
 
 
-class SwitchSequential(nn.Module):
+class SwitchSequential(nn.Sequential):
     def forward(self, x: torch.Tensor, context: torch.Tensor, time: torch.Tensor) -> torch.Tensor:
         for layer in self:
             if isinstance(layer, UNET_attentionBlock):

@@ -57,6 +57,9 @@ class DDPMSampler:
         # eq 7
         variance = (1 - alpha_t_bar_prev) / (1 - alpha_t_bar) * current_beta_t
 
+        # avoiding log(0)
+        variance = torch.clamp(variance, min=1e-20)
+
         return variance
 
     def set_strength(self, strength=1):

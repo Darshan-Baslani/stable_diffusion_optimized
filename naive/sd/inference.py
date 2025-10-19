@@ -1,3 +1,4 @@
+import time
 import model_loader
 import pipeline
 from PIL import Image
@@ -22,28 +23,24 @@ tokenizer = CLIPTokenizer("naive/data/vocab.json", merges_file="naive/data/merge
 model_file = "naive/data/v1-5-pruned-emaonly.ckpt"
 models = model_loader.preload_models_from_standard_weights(model_file, DEVICE)
 
-## TEXT TO IMAGE
-
 prompt = "A cat stretching on the floor, highly detailed, ultra sharp, cinematic, 100mm lens, 8k resolution."
 uncond_prompt = ""
 do_cfg = True
-cfg_scale = 8  # min: 1, max: 14
-
-## IMAGE TO IMAGE
-
-# input_image = None
-# # Comment to disable image to image
-# image_path = "../images/dog.jpg"
-# # input_image = Image.open(image_path)
-# # Higher values means more noise will be added to the input image, so the result will further from the input image.
-# # Lower values means less noise is added to the input image, so output will be closer to the input image.
-# strength = 0.9
-
-## SAMPLER
-
+cfg_scale = 8
 sampler = "ddpm"
-num_inference_steps = 10
+num_inference_steps = 50
 seed = 42
+
+# Warmup (optional, useful for more stable timings on GPU)
+# run a cheap call or the same call once to warm up CUDA kernels / caches
+# _ = pipeline.generate(...)
+
+# Start timer
+start = time.perf_counter()
+
+# If using CUDA, ensure previous kernels finished before starting timer (optional)
+if DEVICE == "cuda":
+    torch.cuda.synchronize()
 
 output_image = pipeline.generate(
     prompt=prompt,
@@ -61,6 +58,12 @@ output_image = pipeline.generate(
     tokenizer=tokenizer,
 )
 
-# Combine the input image and the output image into a single image.
-Image.fromarray(output_image).save("output.png")
+# If using CUDA, wait for kernels to finish before stopping timer
+if DEVICE == "cuda":
+    torch.cuda.synchronize()
 
+end = time.perf_counter()
+elapsed_s = end - start
+print(f"Inference time: {elapsed_s:.4f} seconds ({elapsed_s*1000:.1f} ms)")
+
+Image.fromarray(output_image).save("output.png")

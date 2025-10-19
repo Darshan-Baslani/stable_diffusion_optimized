@@ -79,7 +79,7 @@ class DDPMSampler:
         # compute alphas and betas
         alpha_t_bar = self.alpha_t_bar[timestep]
         alpha_t_bar_prev = (
-            self.alpha_t_bar[prev_timestep] if timestep >= 0 else self.one
+            self.alpha_t_bar[prev_timestep] if prev_timestep >= 0 else self.one
         )
         beta_t_bar = 1 - alpha_t_bar
         beta_t_bar_prev = 1 - alpha_t_bar_prev

@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "iprogress>=0.4",
     "ipykernel>=7.0.1",
+    "jupyterlab>=4.4.9",
     "lightning>=2.5.5",
     "pillow>=12.0.0",
     "pip>=25.2",

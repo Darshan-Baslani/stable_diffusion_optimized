@@ -24,13 +24,13 @@ def generate(prompt: str,
              tokenizer=None
             ):
     with torch.no_grad():
-        if 0 <= strength <= 1:
+        if not 0 < strength <= 1:
             raise ValueError("strength must be between 0 and 1")
 
         if idle_device:
-            to_idle: lambda x: x.to(idle_device)
+            to_idle = lambda x: x.to(idle_device)
         else:
-            to_idle: lambda x: x
+            to_idle = lambda x: x
 
         generator = torch.Generator(device=device)
         if seed is None:

@@ -4,7 +4,7 @@ from torch.nn import functional as F
 import math
 
 class SelfAttention(nn.Module):
-    def __init__(self, n_heads, d_embed, in_proj_bias=True, out_prpj_bias=False):
+    def __init__(self, n_heads, d_embed, in_proj_bias=True, out_prpj_bias=True):
         super().__init__()
         # combining wk, wq, wv matrix into a single matrix
         self.in_proj = nn.Linear(d_embed, d_embed*3, bias=in_proj_bias)

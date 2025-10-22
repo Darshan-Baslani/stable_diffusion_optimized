@@ -15,7 +15,11 @@ class SelfAttention(nn.Module):
         self.n_heads = n_heads
         self.d_head = d_embed // n_heads
 
-    def forward(self, x, casual_mask=False):
+        self.register_buffer("k_cache", None, persistent=False)
+        self.register_buffer("v_cache", None, persistent=False)
+        self.curr_tok_pos = 0
+
+    def forward(self, x, casual_mask=False, use_cache=False):
         # (batch, seq_len(h*w), dim)
         input_shape = x.shape
 
@@ -31,10 +35,21 @@ class SelfAttention(nn.Module):
         k = k.view(interim_shape).transpose(1, 2)
         v = v.view(interim_shape).transpose(1, 2)
 
+        if use_cache:
+            if self.k_cache is None and self.v_cache is None:
+                self.k_cache = k
+                self.v_cache = v
+            else:
+                self.k_cache = torch.cat([self.k_cache, k], dim=2)
+                self.v_cache = torch.cat([self.v_cache, v], dim=2)
+            k, v = self.k_cache, self.v_cache
+        else:
+            k, v = k, v
+
         # (Batch_Size, H, Seq_Len, Dim / H) @ (Batch_Size, H, Dim / H, Seq_Len) -> (Batch_Size, H, Seq_Len, Seq_Len)
         weight = q @ k.transpose(-1, -2)
 
-        if casual_mask:
+        if casual_mask and not use_cache:
             # Mask where the upper triangle (above the principal diagonal) is 1
             mask = torch.ones_like(weight, dtype=torch.bool).triu(1) 
             # Fill the upper triangle with -inf

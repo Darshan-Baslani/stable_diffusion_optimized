@@ -24,10 +24,15 @@ class VAE_AttentionBlock(nn.Module):
         
         # (Batch_Size, Features, Height * Width) -> (Batch_Size, Height * Width, Features). Each pixel becomes a feature of size "Features", the sequence length is "Height * Width".
         x = x.transpose(-1, -2)
+
+        # kv_cache 
+        _, steps, _ = x.shape
+        for i in steps:
+            x[:, i, :] = self.attention(x[:, i, :])
         
-        # Perform self-attention WITHOUT mask
-        # (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
-        x = self.attention(x)
+        # # Perform self-attention WITHOUT mask
+        # # (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
+        # x = self.attention(x)
         
         # (Batch_Size, Height * Width, Features) -> (Batch_Size, Features, Height * Width)
         x = x.transpose(-1, -2)

@@ -9,7 +9,7 @@ class VAE_AttentionBlock(nn.Module):
         self.groupnorm = nn.GroupNorm(32, channels)
         self.attention = SelfAttention(1, channels)
     
-    def forward(self, x):
+    def forward(self, x, use_cache=False):
         # x: (Batch_Size, Features, Height, Width)
 
         residue = x 
@@ -25,14 +25,9 @@ class VAE_AttentionBlock(nn.Module):
         # (Batch_Size, Features, Height * Width) -> (Batch_Size, Height * Width, Features). Each pixel becomes a feature of size "Features", the sequence length is "Height * Width".
         x = x.transpose(-1, -2)
 
-        # kv_cache 
-        _, steps, _ = x.shape
-        for i in steps:
-            x[:, i, :] = self.attention(x[:, i, :])
-        
         # # Perform self-attention WITHOUT mask
         # # (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
-        # x = self.attention(x)
+        x = self.attention(x, use_cache=use_cache)
         
         # (Batch_Size, Height * Width, Features) -> (Batch_Size, Features, Height * Width)
         x = x.transpose(-1, -2)
@@ -45,6 +40,9 @@ class VAE_AttentionBlock(nn.Module):
 
         # (Batch_Size, Features, Height, Width)
         return x 
+
+    def reset_kv_cache(self):
+        self.attention.reset_kv_cache()
 
 
 class VAE_ResidualBlock(nn.Module):
@@ -171,14 +169,22 @@ class VAE_Decoder(nn.Sequential):
             nn.Conv2d(128, 3, kernel_size=3, padding=1), 
         )
 
-    def forward(self, x):
+    def forward(self, x, use_cache=False):
         # x: (Batch_Size, 4, Height / 8, Width / 8)
         
         # Remove the scaling added by the Encoder.
         x /= 0.18215
 
         for module in self:
-            x = module(x)
+            if isinstance(module, VAE_AttentionBlock):
+                x = module(x, use_cache=use_cache)
+            else:
+                x = module(x)
 
         # (Batch_Size, 3, Height, Width)
         return x
+
+    def reset_kv_cache(self):
+        for module in self:
+            if isinstance(module, VAE_AttentionBlock):
+                module.reset_kv_cache()

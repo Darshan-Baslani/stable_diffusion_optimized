@@ -53,7 +53,7 @@ class VAE_Encoder(nn.Sequential):
             nn.Conv2d(8, 8, kernel_size=1, padding=0),
         )
 
-    def forward(self, x, noise):
+    def forward(self, x, noise, use_cache=False):
         # x: (Batch_Size, Channel, Height, Width)
         # noise: (Batch_Size, 4, Height / 8, Width / 8)
 
@@ -63,8 +63,10 @@ class VAE_Encoder(nn.Sequential):
                 # Pad with zeros on the right and bottom.
                 # (Batch_Size, Channel, Height, Width) -> (Batch_Size, Channel, Height + Padding_Top + Padding_Bottom, Width + Padding_Left + Padding_Right) = (Batch_Size, Channel, Height + 1, Width + 1)
                 x = F.pad(x, (0, 1, 0, 1))
-            
-            x = module(x)
+            if isinstance(module, VAE_AttentionBlock):
+                x = module(x, use_cache=use_cache)
+            else:
+                x = module(x)
         # (Batch_Size, 8, Height / 8, Width / 8) -> two tensors of shape (Batch_Size, 4, Height / 8, Width / 8)
         mean, log_variance = torch.chunk(x, 2, dim=1)
         # Clamp the log variance between -30 and 20, so that the variance is between (circa) 1e-14 and 1e8. 
@@ -84,3 +86,8 @@ class VAE_Encoder(nn.Sequential):
         x *= 0.18215
         
         return x
+
+    def reset_kv_cache(self):
+        for module in self:
+            if isinstance(module, VAE_AttentionBlock):
+                module.reset_kv_cache()

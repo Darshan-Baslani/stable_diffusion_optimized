@@ -56,6 +56,7 @@ output_image = pipeline.generate(
     device=DEVICE,
     idle_device="cpu",
     tokenizer=tokenizer,
+    use_cache=True
 )
 
 # If using CUDA, wait for kernels to finish before stopping timer

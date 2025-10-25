@@ -207,4 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 # additional
-data
+naive/data/v1-5-pruned-emaonly.ckpt

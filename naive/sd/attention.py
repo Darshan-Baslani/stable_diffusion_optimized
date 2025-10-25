@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import math
+import logging
 
 class SelfAttention(nn.Module):
     def __init__(self, n_heads, d_embed, in_proj_bias=True, out_prpj_bias=True):
@@ -21,6 +22,7 @@ class SelfAttention(nn.Module):
     def forward(self, x, casual_mask=False, use_cache=False):
         # (batch, seq_len(h*w), dim)
         input_shape = x.shape
+        logging.debug(f'self-attention: x shape: {x.shape}')
 
         batch_size, seq_len, d_embed = input_shape
 
@@ -28,11 +30,17 @@ class SelfAttention(nn.Module):
 
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim * 3) -> 3 tensor of shape (Batch_Size, Seq_Len, Dim)
         q, k, v = self.in_proj(x).chunk(3, dim=-1)
+        logging.debug(f'self-attention: q shape: {q.shape}')
+        logging.debug(f'self-attention: k shape: {k.shape}')
+        logging.debug(f'self-attention: v shape: {v.shape}')
 
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, H, Dim / H) -> (Batch_Size, H, Seq_Len, Dim / H)
         q = q.view(interim_shape).transpose(1, 2)
         k = k.view(interim_shape).transpose(1, 2)
         v = v.view(interim_shape).transpose(1, 2)
+        logging.debug(f'self-attention: q reshaped: {q.shape}')
+        logging.debug(f'self-attention: k reshaped: {k.shape}')
+        logging.debug(f'self-attention: v reshaped: {v.shape}')
 
         if use_cache:
             if self.k_cache is None and self.v_cache is None:
@@ -56,20 +64,25 @@ class SelfAttention(nn.Module):
         # (Batch_Size, H, Seq_Len, Seq_Len) -> (Batch_Size, H, Seq_Len, Seq_Len)
         weight /= math.sqrt(self.d_head) 
 
-        # (Batch_Size, H, Seq_Len, Seq_Len) -> (Batch_Size, H, Seq_Len, Seq_Len)
+        # (Batch_Size, H, Seq_Len, Seq_Len)
         weight = F.softmax(weight, dim=-1) 
+        logging.debug(f'self-attention: weight after softmax: {weight.shape}')
 
         # (Batch_Size, H, Seq_Len, Seq_Len) @ (Batch_Size, H, Seq_Len, Dim / H) -> (Batch_Size, H, Seq_Len, Dim / H)
         output = weight @ v
+        logging.debug(f'self-attention: output after attention: {output.shape}')
 
         # (Batch_Size, H, Seq_Len, Dim / H) -> (Batch_Size, Seq_Len, H, Dim / H)
         output = output.transpose(1, 2) 
+        logging.debug(f'self-attention: output after transpose: {output.shape}')
 
         # (Batch_Size, Seq_Len, H, Dim / H) -> (Batch_Size, Seq_Len, Dim)
         output = output.reshape(input_shape) 
+        logging.debug(f'self-attention: output after reshape: {output.shape}')
 
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
         output = self.out_proj(output) 
+        logging.debug(f'self-attention: output after out_proj: {output.shape}') 
         
         # (Batch_Size, Seq_Len, Dim)
         return output
@@ -96,6 +109,8 @@ class CrossAttention(nn.Module):
     def forward(self, x, y, use_cache=False):
         # x (latent): # (Batch_Size, Seq_Len_Q, Dim_Q)
         # y (context): # (Batch_Size, Seq_Len_KV, Dim_KV) = (Batch_Size, 77, 768)
+        logging.debug(f'cross-attention: x shape: {x.shape}')
+        logging.debug(f'cross-attention: y shape: {y.shape}')
 
         input_shape = x.shape
         batch_size, sequence_length, d_embed = input_shape
@@ -108,6 +123,9 @@ class CrossAttention(nn.Module):
         k = self.k_proj(y)
         # (Batch_Size, Seq_Len_KV, Dim_KV) -> (Batch_Size, Seq_Len_KV, Dim_Q)
         v = self.v_proj(y)
+        logging.debug(f'cross-attention: q shape: {q.shape}')
+        logging.debug(f'cross-attention: k shape: {k.shape}')
+        logging.debug(f'cross-attention: v shape: {v.shape}')
 
         # (Batch_Size, Seq_Len_Q, Dim_Q) -> (Batch_Size, Seq_Len_Q, H, Dim_Q / H) -> (Batch_Size, H, Seq_Len_Q, Dim_Q / H)
         q = q.view(interim_shape).transpose(1, 2) 
@@ -115,6 +133,9 @@ class CrossAttention(nn.Module):
         k = k.view(interim_shape).transpose(1, 2) 
         # (Batch_Size, Seq_Len_KV, Dim_Q) -> (Batch_Size, Seq_Len_KV, H, Dim_Q / H) -> (Batch_Size, H, Seq_Len_KV, Dim_Q / H)
         v = v.view(interim_shape).transpose(1, 2) 
+        logging.debug(f'cross-attention: q reshaped: {q.shape}')
+        logging.debug(f'cross-attention: k reshaped: {k.shape}')
+        logging.debug(f'cross-attention: v reshaped: {v.shape}') 
 
         if use_cache:
             if self.k_cache is None and self.v_cache is None:
@@ -133,18 +154,23 @@ class CrossAttention(nn.Module):
         
         # (Batch_Size, H, Seq_Len_Q, Seq_Len_KV)
         weight = F.softmax(weight, dim=-1)
+        logging.debug(f'cross-attention: weight after softmax: {weight.shape}')
         
         # (Batch_Size, H, Seq_Len_Q, Seq_Len_KV) @ (Batch_Size, H, Seq_Len_KV, Dim_Q / H) -> (Batch_Size, H, Seq_Len_Q, Dim_Q / H)
         output = weight @ v
+        logging.debug(f'cross-attention: output after attention: {output.shape}')
         
         # (Batch_Size, H, Seq_Len_Q, Dim_Q / H) -> (Batch_Size, Seq_Len_Q, H, Dim_Q / H)
         output = output.transpose(1, 2).contiguous()
+        logging.debug(f'cross-attention: output after transpose: {output.shape}')
         
         # (Batch_Size, Seq_Len_Q, H, Dim_Q / H) -> (Batch_Size, Seq_Len_Q, Dim_Q)
         output = output.view(input_shape)
+        logging.debug(f'cross-attention: output after view: {output.shape}')
         
         # (Batch_Size, Seq_Len_Q, Dim_Q) -> (Batch_Size, Seq_Len_Q, Dim_Q)
         output = self.out_proj(output)
+        logging.debug(f'cross-attention: output after out_proj: {output.shape}')
 
         # (Batch_Size, Seq_Len_Q, Dim_Q)
         return output

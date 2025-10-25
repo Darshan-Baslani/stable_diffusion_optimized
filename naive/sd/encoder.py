@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+import logging
 
 from decoder import VAE_AttentionBlock, VAE_ResidualBlock
 
@@ -56,8 +57,10 @@ class VAE_Encoder(nn.Sequential):
     def forward(self, x, noise, use_cache=False):
         # x: (Batch_Size, Channel, Height, Width)
         # noise: (Batch_Size, 4, Height / 8, Width / 8)
+        logging.debug(f'vae-encoder: x shape: {x.shape}')
+        logging.debug(f'vae-encoder: noise shape: {noise.shape}')
 
-        for module in self:
+        for i, module in enumerate(self):
             if getattr(module, 'stride', None) == (2, 2):  # Padding at downsampling should be asymmetric (see #8)
                 # Pad: (Padding_Left, Padding_Right, Padding_Top, Padding_Bottom).
                 # Pad with zeros on the right and bottom.
@@ -67,8 +70,13 @@ class VAE_Encoder(nn.Sequential):
                 x = module(x, use_cache=use_cache)
             else:
                 x = module(x)
+            logging.debug(f'vae-encoder: layer {i} output shape: {x.shape}')
+
         # (Batch_Size, 8, Height / 8, Width / 8) -> two tensors of shape (Batch_Size, 4, Height / 8, Width / 8)
         mean, log_variance = torch.chunk(x, 2, dim=1)
+        logging.debug(f'vae-encoder: mean shape: {mean.shape}')
+        logging.debug(f'vae-encoder: log_variance shape: {log_variance.shape}')
+
         # Clamp the log variance between -30 and 20, so that the variance is between (circa) 1e-14 and 1e8. 
         # (Batch_Size, 4, Height / 8, Width / 8) -> (Batch_Size, 4, Height / 8, Width / 8)
         log_variance = torch.clamp(log_variance, -30, 20)

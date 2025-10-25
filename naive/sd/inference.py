@@ -1,4 +1,13 @@
 import time
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(message)s',
+    filename='shape_log.txt',
+    filemode='w',
+)
+
 import model_loader
 import pipeline
 from PIL import Image

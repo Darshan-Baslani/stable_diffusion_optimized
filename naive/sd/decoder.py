@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from attention import SelfAttention
+import logging
 
 class VAE_AttentionBlock(nn.Module):
     def __init__(self, channels):
@@ -11,6 +12,7 @@ class VAE_AttentionBlock(nn.Module):
     
     def forward(self, x, use_cache=False):
         # x: (Batch_Size, Features, Height, Width)
+        logging.debug(f'vae-attention-block: x shape: {x.shape}')
 
         residue = x 
 
@@ -24,16 +26,19 @@ class VAE_AttentionBlock(nn.Module):
         
         # (Batch_Size, Features, Height * Width) -> (Batch_Size, Height * Width, Features). Each pixel becomes a feature of size "Features", the sequence length is "Height * Width".
         x = x.transpose(-1, -2)
+        logging.debug(f'vae-attention-block: x after transpose: {x.shape}')
 
         # # Perform self-attention WITHOUT mask
         # # (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
         x = self.attention(x, use_cache=use_cache)
+        logging.debug(f'vae-attention-block: x after attention: {x.shape}')
         
         # (Batch_Size, Height * Width, Features) -> (Batch_Size, Features, Height * Width)
         x = x.transpose(-1, -2)
         
         # (Batch_Size, Features, Height * Width) -> (Batch_Size, Features, Height, Width)
         x = x.view((n, c, h, w))
+        logging.debug(f'vae-attention-block: x after view: {x.shape}')
         
         # (Batch_Size, Features, Height, Width) + (Batch_Size, Features, Height, Width) -> (Batch_Size, Features, Height, Width) 
         x += residue
@@ -61,6 +66,7 @@ class VAE_ResidualBlock(nn.Module):
     
     def forward(self, x):
         # x: (Batch_Size, In_Channels, Height, Width)
+        logging.debug(f'vae-residual-block: x shape: {x.shape}')
 
         residue = x
 
@@ -72,6 +78,7 @@ class VAE_ResidualBlock(nn.Module):
         
         # (Batch_Size, In_Channels, Height, Width) -> (Batch_Size, Out_Channels, Height, Width)
         x = self.conv_1(x)
+        logging.debug(f'vae-residual-block: x after conv_1: {x.shape}')
         
         # (Batch_Size, Out_Channels, Height, Width) -> (Batch_Size, Out_Channels, Height, Width)
         x = self.groupnorm_2(x)
@@ -81,6 +88,7 @@ class VAE_ResidualBlock(nn.Module):
         
         # (Batch_Size, Out_Channels, Height, Width) -> (Batch_Size, Out_Channels, Height, Width)
         x = self.conv_2(x)
+        logging.debug(f'vae-residual-block: x after conv_2: {x.shape}')
         
         # (Batch_Size, Out_Channels, Height, Width) -> (Batch_Size, Out_Channels, Height, Width)
         return x + self.residual_layer(residue)
@@ -171,15 +179,17 @@ class VAE_Decoder(nn.Sequential):
 
     def forward(self, x, use_cache=False):
         # x: (Batch_Size, 4, Height / 8, Width / 8)
+        logging.debug(f'vae-decoder: x shape: {x.shape}')
         
         # Remove the scaling added by the Encoder.
         x /= 0.18215
 
-        for module in self:
+        for i, module in enumerate(self):
             if isinstance(module, VAE_AttentionBlock):
                 x = module(x, use_cache=use_cache)
             else:
                 x = module(x)
+            logging.debug(f'vae-decoder: layer {i} output shape: {x.shape}')
 
         # (Batch_Size, 3, Height, Width)
         return x

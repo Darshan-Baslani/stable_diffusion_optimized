@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from tqdm import tqdm
+import logging
 
 from ddpm import DDPMSampler
 
@@ -117,6 +118,7 @@ def generate(prompt: str,
 
         timesteps = tqdm(sampler.timesteps)
         for i, timestep in enumerate(timesteps):
+            logging.debug(f"\ninference step: {i} at timestep: {timestep}\n")
             # (1, 320)
             time_embedding = get_time_embedding(timestep).to(device)
 

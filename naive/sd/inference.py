@@ -37,7 +37,7 @@ uncond_prompt = ""
 do_cfg = True
 cfg_scale = 8
 sampler = "ddpm"
-num_inference_steps = 50
+num_inference_steps = 2
 seed = 42
 
 # Warmup (optional, useful for more stable timings on GPU)
@@ -65,7 +65,7 @@ output_image = pipeline.generate(
     device=DEVICE,
     idle_device="cpu",
     tokenizer=tokenizer,
-    use_cache=False
+    use_cache=True
 )
 
 # If using CUDA, wait for kernels to finish before stopping timer

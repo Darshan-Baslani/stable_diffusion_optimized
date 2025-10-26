@@ -43,12 +43,16 @@ class SelfAttention(nn.Module):
         logging.debug(f'self-attention: v reshaped: {v.shape}')
 
         if use_cache:
+            logging.debug("using kv cache")
             if self.k_cache is None and self.v_cache is None:
                 self.k_cache = k
                 self.v_cache = v
             else:
                 self.k_cache = torch.cat([self.k_cache, k], dim=2)
                 self.v_cache = torch.cat([self.v_cache, v], dim=2)
+
+                logging.debug(f"k_cache: {self.k_cache.shape}")
+                logging.debug(f"v_cache: {self.v_cache.shape}")
             k, v = self.k_cache, self.v_cache
 
         # (Batch_Size, H, Seq_Len, Dim / H) @ (Batch_Size, H, Dim / H, Seq_Len) -> (Batch_Size, H, Seq_Len, Seq_Len)

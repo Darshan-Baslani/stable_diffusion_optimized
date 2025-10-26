@@ -41,15 +41,10 @@ sampler = "ddpm"
 seed = 42
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--cache', action='store_true')
 parser.add_argument('--n_inf_steps', type=int, default=50)
 args = parser.parse_args()
 num_inference_steps = args.n_inf_steps
 
-
-# Warmup (optional, useful for more stable timings on GPU)
-# run a cheap call or the same call once to warm up CUDA kernels / caches
-# _ = pipeline.generate(...)
 
 # Start timer
 start = time.perf_counter()
@@ -72,7 +67,6 @@ output_image = pipeline.generate(
     device=DEVICE,
     idle_device="cpu",
     tokenizer=tokenizer,
-    use_cache=args.cache
 )
 
 # If using CUDA, wait for kernels to finish before stopping timer

@@ -23,7 +23,6 @@ def generate(prompt: str,
              device=None,
              idle_device=None,
              tokenizer=None,
-             use_cache=False,
             ):
     with torch.no_grad():
         if not 0 < strength <= 1:
@@ -97,11 +96,8 @@ def generate(prompt: str,
             # (Batch_Size, 4, Latents_Height, Latents_Width)
             encoder_noise = torch.randn(latents_shape, generator=generator, device=device)
 
-            if use_cache:
-                encoder.reset_kv_cache()
-
             # (Batch_Size, 4, Latents_Height, Latents_Width)
-            latents = encoder(input_image_tensor, encoder_noise, use_cache=use_cache)
+            latents = encoder(input_image_tensor, encoder_noise)
 
             # Add noise to the latents (the encoded input image)
             # (Batch_Size, 4, Latents_Height, Latents_Width)
@@ -131,7 +127,7 @@ def generate(prompt: str,
 
             # model_output is the predicted noise
             # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 4, Latents_Height, Latents_Width)
-            model_output = diffusion(model_input, context, time_embedding, use_cache=use_cache)
+            model_output = diffusion(model_input, context, time_embedding)
 
             if do_cfg:
                 output_cond, output_uncond = model_output.chunk(2)
@@ -145,11 +141,8 @@ def generate(prompt: str,
         decoder = models["decoder"]
         decoder.to(device)
 
-        if use_cache:
-            decoder.reset_kv_cache()
-
         # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 3, Height, Width)
-        images = decoder(latents, use_cache=use_cache)
+        images = decoder(latents)
         to_idle(decoder)
 
         images = rescale(images, (-1, 1), (0, 255), clamp=True)

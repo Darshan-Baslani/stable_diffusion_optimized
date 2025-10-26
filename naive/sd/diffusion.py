@@ -103,7 +103,7 @@ class UNET_AttentionBlock(nn.Module):
 
         self.conv_output = nn.Conv2d(channels, channels, kernel_size=1, padding=0)
     
-    def forward(self, x, context, use_cache=False):
+    def forward(self, x, context ):
         # x: (Batch_Size, Features, Height, Width)
         # context: (Batch_Size, Seq_Len, Dim)
         logging.debug(f'unet-attention-block: x shape: {x.shape}')
@@ -136,7 +136,7 @@ class UNET_AttentionBlock(nn.Module):
         x = self.layernorm_1(x)
         
         # (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
-        x = self.attention_1(x, use_cache=use_cache)
+        x = self.attention_1(x)
         logging.debug(f'unet-attention-block: x after attention_1: {x.shape}')
         
         # (Batch_Size, Height * Width, Features) + (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
@@ -151,7 +151,7 @@ class UNET_AttentionBlock(nn.Module):
         x = self.layernorm_2(x)
         
         # (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
-        x = self.attention_2(x, context, use_cache=use_cache)
+        x = self.attention_2(x, context)
         logging.debug(f'unet-attention-block: x after attention_2: {x.shape}')
         
         # (Batch_Size, Height * Width, Features) + (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
@@ -190,10 +190,6 @@ class UNET_AttentionBlock(nn.Module):
         # (Batch_Size, Features, Height, Width) + (Batch_Size, Features, Height, Width) -> (Batch_Size, Features, Height, Width)
         return self.conv_output(x) + residue_long
 
-    def reset_kv_cache(self):
-        self.attention_1.reset_kv_cache()
-        self.attention_2.reset_kv_cache()
-
 class Upsample(nn.Module):
     def __init__(self, channels):
         super().__init__()
@@ -207,10 +203,10 @@ class Upsample(nn.Module):
         return self.conv(x)
 
 class SwitchSequential(nn.Sequential):
-    def forward(self, x, context, time, use_cache=False):
+    def forward(self, x, context, time):
         for layer in self:
             if isinstance(layer, UNET_AttentionBlock):
-                x = layer(x, context, use_cache=use_cache)
+                x = layer(x, context)
             elif isinstance(layer, UNET_ResidualBlock):
                 x = layer(x, time)
             else:
@@ -307,7 +303,7 @@ class UNET(nn.Module):
             SwitchSequential(UNET_ResidualBlock(640, 320), UNET_AttentionBlock(8, 40)),
         ])
 
-    def forward(self, x, context, time, use_cache=False):
+    def forward(self, x, context, time):
         # x: (Batch_Size, 4, Height / 8, Width / 8)
         # context: (Batch_Size, Seq_Len, Dim) 
         # time: (1, 1280)
@@ -317,34 +313,21 @@ class UNET(nn.Module):
 
         skip_connections = []
         for i, layers in enumerate(self.encoders):
-            x = layers(x, context, time, use_cache=use_cache)
+            x = layers(x, context, time)
             logging.debug(f'unet: encoder {i} output shape: {x.shape}')
             skip_connections.append(x)
 
-        x = self.bottleneck(x, context, time, use_cache=use_cache)
+        x = self.bottleneck(x, context, time)
         logging.debug(f'unet: bottleneck output shape: {x.shape}')
 
         for i, layers in enumerate(self.decoders):
             # Since we always concat with the skip connection of the encoder, the number of features increases before being sent to the decoder's layer
             x = torch.cat((x, skip_connections.pop()), dim=1) 
             logging.debug(f'unet: decoder {i} input shape: {x.shape}')
-            x = layers(x, context, time, use_cache=use_cache)
+            x = layers(x, context, time)
             logging.debug(f'unet: decoder {i} output shape: {x.shape}')
         
         return x
-
-    def reset_kv_cache(self):
-        def _reset_in_module(module):
-            for submodule in module.children():
-                if isinstance(submodule, UNET_AttentionBlock):
-                    submodule.reset_kv_cache()
-                else:
-                    _reset_in_module(submodule)
-        
-        # reset all caches across encoders, bottleneck, and decoders
-        for part in [self.encoders, self.bottleneck, self.decoders]:
-            _reset_in_module(part)
-
 
 class UNET_OutputLayer(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -376,7 +359,7 @@ class Diffusion(nn.Module):
         self.unet = UNET()
         self.final = UNET_OutputLayer(320, 4)
     
-    def forward(self, latent, context, time, use_cache=False):
+    def forward(self, latent, context, time):
         # latent: (Batch_Size, 4, Height / 8, Width / 8)
         # context: (Batch_Size, Seq_Len, Dim)
         # time: (1, 320)
@@ -389,7 +372,7 @@ class Diffusion(nn.Module):
         logging.debug(f'diffusion: time_embedding output shape: {time.shape}')
         
         # (Batch, 4, Height / 8, Width / 8) -> (Batch, 320, Height / 8, Width / 8)
-        output = self.unet(latent, context, time, use_cache=use_cache)
+        output = self.unet(latent, context, time)
         logging.debug(f'diffusion: unet output shape: {output.shape}')
         
         # (Batch, 320, Height / 8, Width / 8) -> (Batch, 4, Height / 8, Width / 8)
@@ -398,6 +381,3 @@ class Diffusion(nn.Module):
         
         # (Batch, 4, Height / 8, Width / 8)
         return output
-
-    def reset_kv_cache(self):
-        self.unet.reset_kv_cache()

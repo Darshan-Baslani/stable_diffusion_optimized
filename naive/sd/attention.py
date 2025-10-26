@@ -16,10 +16,7 @@ class SelfAttention(nn.Module):
         self.n_heads = n_heads
         self.d_head = d_embed // n_heads
 
-        self.register_buffer("k_cache", None, persistent=False)
-        self.register_buffer("v_cache", None, persistent=False)
-
-    def forward(self, x, casual_mask=False, use_cache=False):
+    def forward(self, x, casual_mask=False):
         # (batch, seq_len(h*w), dim)
         input_shape = x.shape
         logging.debug(f'self-attention: x shape: {x.shape}')
@@ -42,23 +39,10 @@ class SelfAttention(nn.Module):
         logging.debug(f'self-attention: k reshaped: {k.shape}')
         logging.debug(f'self-attention: v reshaped: {v.shape}')
 
-        if use_cache:
-            logging.debug("using kv cache")
-            if self.k_cache is None and self.v_cache is None:
-                self.k_cache = k
-                self.v_cache = v
-            else:
-                self.k_cache = torch.cat([self.k_cache, k], dim=2)
-                self.v_cache = torch.cat([self.v_cache, v], dim=2)
-
-                logging.debug(f"k_cache: {self.k_cache.shape}")
-                logging.debug(f"v_cache: {self.v_cache.shape}")
-            k, v = self.k_cache, self.v_cache
-
         # (Batch_Size, H, Seq_Len, Dim / H) @ (Batch_Size, H, Dim / H, Seq_Len) -> (Batch_Size, H, Seq_Len, Seq_Len)
         weight = q @ k.transpose(-1, -2)
 
-        if casual_mask and not use_cache:
+        if casual_mask:
             # Mask where the upper triangle (above the principal diagonal) is 1
             mask = torch.ones_like(weight, dtype=torch.bool).triu(1) 
             # Fill the upper triangle with -inf
@@ -91,11 +75,6 @@ class SelfAttention(nn.Module):
         # (Batch_Size, Seq_Len, Dim)
         return output
 
-    def reset_kv_cache(self):
-        self.k_cache = None
-        self.v_cache = None
-
-
 class CrossAttention(nn.Module):
     def __init__(self, n_heads, d_embed, d_cross, in_proj_bias=True, out_proj_bias=True):
         super().__init__()
@@ -106,11 +85,7 @@ class CrossAttention(nn.Module):
         self.n_heads = n_heads
         self.d_head = d_embed // n_heads
 
-        self.register_buffer("k_cache", None, persistent=False)
-        self.register_buffer("v_cache", None, persistent=False)
-
-   
-    def forward(self, x, y, use_cache=False):
+    def forward(self, x, y):
         # x (latent): # (Batch_Size, Seq_Len_Q, Dim_Q)
         # y (context): # (Batch_Size, Seq_Len_KV, Dim_KV) = (Batch_Size, 77, 768)
         logging.debug(f'cross-attention: x shape: {x.shape}')
@@ -141,21 +116,6 @@ class CrossAttention(nn.Module):
         logging.debug(f'cross-attention: k reshaped: {k.shape}')
         logging.debug(f'cross-attention: v reshaped: {v.shape}') 
 
-        if use_cache:
-            logging.debug("using kv cache")
-            
-            if self.k_cache is None and self.v_cache is None:
-                self.k_cache = k
-                self.v_cache = v
-            else:
-                self.k_cache = torch.cat([self.k_cache, k], dim=2)
-                self.v_cache = torch.cat([self.v_cache, v], dim=2)
-
-                logging.debug(f"k_cache: {self.k_cache.shape}")
-                logging.debug(f"v_cache: {self.v_cache.shape}")
-
-            k, v = self.k_cache, self.v_cache
-        
         # (Batch_Size, H, Seq_Len_Q, Dim_Q / H) @ (Batch_Size, H, Dim_Q / H, Seq_Len_KV) -> (Batch_Size, H, Seq_Len_Q, Seq_Len_KV)
         weight = q @ k.transpose(-1, -2)
         
@@ -184,9 +144,4 @@ class CrossAttention(nn.Module):
 
         # (Batch_Size, Seq_Len_Q, Dim_Q)
         return output
-
-    def reset_kv_cache(self):
-        self.k_cache = None
-        self.v_cache = None
-
 

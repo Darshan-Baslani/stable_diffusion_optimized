@@ -10,7 +10,7 @@ class VAE_AttentionBlock(nn.Module):
         self.groupnorm = nn.GroupNorm(32, channels)
         self.attention = SelfAttention(1, channels)
     
-    def forward(self, x, use_cache=False):
+    def forward(self, x):
         # x: (Batch_Size, Features, Height, Width)
         logging.debug(f'vae-attention-block: x shape: {x.shape}')
 
@@ -30,7 +30,7 @@ class VAE_AttentionBlock(nn.Module):
 
         # # Perform self-attention WITHOUT mask
         # # (Batch_Size, Height * Width, Features) -> (Batch_Size, Height * Width, Features)
-        x = self.attention(x, use_cache=use_cache)
+        x = self.attention(x)
         logging.debug(f'vae-attention-block: x after attention: {x.shape}')
         
         # (Batch_Size, Height * Width, Features) -> (Batch_Size, Features, Height * Width)
@@ -45,10 +45,6 @@ class VAE_AttentionBlock(nn.Module):
 
         # (Batch_Size, Features, Height, Width)
         return x 
-
-    def reset_kv_cache(self):
-        self.attention.reset_kv_cache()
-
 
 class VAE_ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -177,7 +173,7 @@ class VAE_Decoder(nn.Sequential):
             nn.Conv2d(128, 3, kernel_size=3, padding=1), 
         )
 
-    def forward(self, x, use_cache=False):
+    def forward(self, x):
         # x: (Batch_Size, 4, Height / 8, Width / 8)
         logging.debug(f'vae-decoder: x shape: {x.shape}')
         
@@ -185,16 +181,8 @@ class VAE_Decoder(nn.Sequential):
         x /= 0.18215
 
         for i, module in enumerate(self):
-            if isinstance(module, VAE_AttentionBlock):
-                x = module(x, use_cache=use_cache)
-            else:
-                x = module(x)
+            x = module(x)
             logging.debug(f'vae-decoder: layer {i} output shape: {x.shape}')
 
         # (Batch_Size, 3, Height, Width)
         return x
-
-    def reset_kv_cache(self):
-        for module in self:
-            if isinstance(module, VAE_AttentionBlock):
-                module.reset_kv_cache()

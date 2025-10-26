@@ -33,7 +33,7 @@ class CLIPLayer(nn.Module):
         self.linear_1 = nn.Linear(n_dim, 4 * n_dim)
         self.linear_2 = nn.Linear(4 * n_dim, n_dim)
 
-    def forward(self, x, use_cache=False):
+    def forward(self, x):
         # (Batch_Size, Seq_Len, Dim)
         residue = x
 
@@ -43,7 +43,7 @@ class CLIPLayer(nn.Module):
         x = self.layernorm_1(x)
 
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
-        x = self.attention(x, casual_mask=True, use_cache=use_cache)
+        x = self.attention(x, casual_mask=True)
 
         # (Batch_Size, Seq_Len, Dim) + (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
         x += residue

@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 import logging
+import time
 
 from ddpm import DDPMSampler
 
@@ -115,6 +116,7 @@ def generate(prompt: str,
             diffusion = torch.compile(diffusion)
 
         timesteps = tqdm(sampler.timesteps)
+        start_time = time.perf_counter()
         for i, timestep in enumerate(timesteps):
             logging.debug(f"\ninference step: {i} at timestep: {timestep}\n")
             # (1, 320)
@@ -137,6 +139,10 @@ def generate(prompt: str,
 
             # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 4, Latents_Height, Latents_Width)
             latents = sampler.step(timestep, latents, model_output)
+
+        end_time = time.perf_counter()
+        elapsed_s = end_time - start_time
+        print(f"Inference time in generate func: {elapsed_s:.4f} seconds ({elapsed_s*1000:.1f} ms)")
 
         to_idle(diffusion)
 

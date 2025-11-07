@@ -47,12 +47,12 @@ num_inference_steps = args.n_inf_steps
 is_torchcompile = args.compile
 
 
-# Start timer
-start = time.perf_counter()
-
 # If using CUDA, ensure previous kernels finished before starting timer (optional)
 if DEVICE == "cuda":
     torch.cuda.synchronize()
+
+# Start timer
+start = time.perf_counter()
 
 output_image = pipeline.generate(
     prompt=prompt,

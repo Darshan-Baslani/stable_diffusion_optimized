@@ -4,6 +4,8 @@ from torch.nn import functional as F
 import math
 import logging
 
+from torch.nn.attention import SDPBackend
+
 class SelfAttention(nn.Module):
     def __init__(self, n_heads, d_embed, in_proj_bias=True, out_prpj_bias=True):
         super().__init__()
@@ -61,9 +63,12 @@ class SelfAttention(nn.Module):
         # logging.debug(f'self-attention: output after attention: {output.shape}')
         
         # flash attention
-        with torch.backends.cuda.sdp_kernel(enable_flash=True,
-                                            enable_math=False,
-                                            enable_mem_efficient=True):
+        # with torch.backends.cuda.sdp_kernel(enable_flash=True,
+        #                                     enable_math=False,
+        #                                     enable_mem_efficient=True):
+        #     output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
+        
+        with nn.attention.sdpa_kernel(nn.attention.SDPBackend.FLASH_ATTENTION):
             output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
         
         # (Batch_Size, H, Seq_Len, Dim / H) -> (Batch_Size, Seq_Len, H, Dim / H)

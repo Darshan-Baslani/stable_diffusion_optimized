@@ -1,6 +1,12 @@
 import time
 import logging
 import argparse
+import model_loader
+import pipeline
+from PIL import Image
+from pathlib import Path
+from transformers import CLIPTokenizer
+import torch
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -8,13 +14,6 @@ logging.basicConfig(
     filename='shape_log.txt',
     filemode='w',
 )
-
-import model_loader
-import pipeline
-from PIL import Image
-from pathlib import Path
-from transformers import CLIPTokenizer
-import torch
 
 DEVICE = "cpu"
 
@@ -41,9 +40,11 @@ sampler = "ddpm"
 seed = 42
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--n_inf_steps', type=int, default=50)
+parser.add_argument('--n_inf_steps', type=int, default=50, help="to set number of inference steps")
+parser.add_argument("--compile", action="store_true", help="to enable torch.compile() the code")
 args = parser.parse_args()
 num_inference_steps = args.n_inf_steps
+is_torchcompile = args.compile
 
 
 # Start timer
@@ -67,6 +68,7 @@ output_image = pipeline.generate(
     device=DEVICE,
     idle_device="cpu",
     tokenizer=tokenizer,
+    is_torchcompile=is_torchcompile,
 )
 
 # If using CUDA, wait for kernels to finish before stopping timer

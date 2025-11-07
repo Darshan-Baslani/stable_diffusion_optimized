@@ -23,6 +23,7 @@ def generate(prompt: str,
              device=None,
              idle_device=None,
              tokenizer=None,
+             is_torchcompile=False,
             ):
     with torch.no_grad():
         if not 0 < strength <= 1:
@@ -109,8 +110,9 @@ def generate(prompt: str,
             # (Batch_Size, 4, Latents_Height, Latents_Width)
             latents = torch.randn(latents_shape, generator=generator, device=device)
 
-        diffusion = models["diffusion"]
-        diffusion.to(device)
+        diffusion = models["diffusion"].to(device)
+        if is_torchcompile:
+            diffusion = torch.compile(diffusion)
 
         timesteps = tqdm(sampler.timesteps)
         for i, timestep in enumerate(timesteps):

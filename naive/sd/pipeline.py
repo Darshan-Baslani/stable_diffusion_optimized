@@ -25,6 +25,8 @@ def generate(prompt: str,
              idle_device=None,
              tokenizer=None,
              is_torchcompile=False,
+             # do_quantize_calc=False,
+             # use_quantized_weights=False,
             ):
     with torch.no_grad():
         if not 0 < strength <= 1:

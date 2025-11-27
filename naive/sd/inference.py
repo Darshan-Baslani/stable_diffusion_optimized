@@ -42,9 +42,13 @@ seed = 42
 parser = argparse.ArgumentParser()
 parser.add_argument('--n_inf_steps', type=int, default=50, help="to set number of inference steps")
 parser.add_argument("--compile", action="store_true", help="to enable torch.compile() the code")
+# parser.add_argument("--quantize_and_store", action="store_true", help="to calculate quantized weights, do inference with observers and store quantized weights")
+# parser.add_argument("--quantize", action="store_true", help="to use quantized weights")
 args = parser.parse_args()
 num_inference_steps = args.n_inf_steps
 is_torchcompile = args.compile
+# do_quantize_calc = args.quantize_and_store
+# use_quantized_weights = args.quantize
 
 
 # If using CUDA, ensure previous kernels finished before starting timer (optional)
@@ -69,6 +73,8 @@ output_image = pipeline.generate(
     idle_device="cpu",
     tokenizer=tokenizer,
     is_torchcompile=is_torchcompile,
+    # do_quantize_calc=do_quantize_calc,
+    # use_quantized_weights=use_quantized_weights,
 )
 
 # If using CUDA, wait for kernels to finish before stopping timer

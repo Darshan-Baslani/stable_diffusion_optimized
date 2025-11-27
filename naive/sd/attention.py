@@ -7,8 +7,13 @@ import logging
 from torch.nn.attention import SDPBackend
 
 class SelfAttention(nn.Module):
-    def __init__(self, n_heads, d_embed, in_proj_bias=True, out_prpj_bias=True):
+    def __init__(self, n_heads, d_embed, in_proj_bias=True, out_prpj_bias=True, do_quantization=False):
         super().__init__()
+        
+        self.do_quantization = do_quantization
+        if self.do_quantization:
+            self.quant = torch.ao.quantization.QuantStub() # by default min-max quant
+
         # combining wk, wq, wv matrix into a single matrix
         self.in_proj = nn.Linear(d_embed, d_embed*3, bias=in_proj_bias)
 
@@ -18,7 +23,13 @@ class SelfAttention(nn.Module):
         self.n_heads = n_heads
         self.d_head = d_embed // n_heads
 
+        if self.do_quantization:
+            self.dequant = torch.ao.quantization.DeQuantStub()
+
     def forward(self, x, casual_mask=False):
+        if self.do_quantization:
+            x = self.quant(x)
+
         # (batch, seq_len(h*w), dim)
         input_shape = x.shape
         logging.debug(f'self-attention: x shape: {x.shape}')
@@ -83,7 +94,10 @@ class SelfAttention(nn.Module):
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim)
         output = self.out_proj(output) 
         logging.debug(f'self-attention: output after out_proj: {output.shape}') 
-        
+
+        if self.do_quantization:
+            x = self.dequant(x)
+
         # (Batch_Size, Seq_Len, Dim)
         return output
 

@@ -1,3 +1,8 @@
+from numpy import diff
+import torch
+from torchao import quantize_
+from torchao.quantization.quant_api import int8_weight_only
+
 from clip import CLIP
 from encoder import VAE_Encoder
 from decoder import VAE_Decoder
@@ -22,12 +27,13 @@ def preload_models_from_standard_weights(ckpt_path, device):
             state_dict['decoder'].pop(k)
     decoder.load_state_dict(state_dict['decoder'], strict=True)
 
-    diffusion = Diffusion().to(device)
+    diffusion = Diffusion().to(device).to(torch.bfloat16)
     for k in list(state_dict['diffusion'].keys()):
         if k not in diffusion.state_dict():
             print("Dropping unexpected diffusion key:", k)
             state_dict['diffusion'].pop(k)
     diffusion.load_state_dict(state_dict['diffusion'], strict=True)
+    diffusion = quantize_(diffusion, int8_weight_only())
 
     clip = CLIP().to(device)
     for k in list(state_dict['clip'].keys()):

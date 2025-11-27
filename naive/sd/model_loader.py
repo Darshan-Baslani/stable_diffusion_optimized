@@ -1,5 +1,6 @@
 from numpy import diff
 import torch
+from torch import nn
 from torchao import quantize_
 from torchao.quantization.quant_api import int8_weight_only
 
@@ -33,6 +34,9 @@ def preload_models_from_standard_weights(ckpt_path, device):
             print("Dropping unexpected diffusion key:", k)
             state_dict['diffusion'].pop(k)
     diffusion.load_state_dict(state_dict['diffusion'], strict=True)
+    for _, module in diffusion.named_modules():
+        if isinstance(module, (nn.GroupNorm, nn.LayerNorm)):
+            module.to(dtype=torch.float32)
     quantize_(diffusion, int8_weight_only())
 
     clip = CLIP().to(device)

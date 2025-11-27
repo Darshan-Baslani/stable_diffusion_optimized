@@ -28,7 +28,7 @@ def preload_models_from_standard_weights(ckpt_path, device):
             state_dict['decoder'].pop(k)
     decoder.load_state_dict(state_dict['decoder'], strict=True)
 
-    diffusion = Diffusion().to(device).to(torch.bfloat16)
+    diffusion = Diffusion().to(device).to(torch.float16)
     for k in list(state_dict['diffusion'].keys()):
         if k not in diffusion.state_dict():
             print("Dropping unexpected diffusion key:", k)

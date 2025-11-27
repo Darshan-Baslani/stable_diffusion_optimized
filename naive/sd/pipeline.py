@@ -111,7 +111,7 @@ def generate(prompt: str,
             to_idle(encoder)
         else:
             # (Batch_Size, 4, Latents_Height, Latents_Width)
-            latents = torch.randn(latents_shape, generator=generator, device=device).to(torch.bfloat16)
+            latents = torch.randn(latents_shape, generator=generator, device=device).to(torch.float16)
 
         diffusion = models["diffusion"].to(device)
         if is_torchcompile:
@@ -133,7 +133,7 @@ def generate(prompt: str,
 
             # model_output is the predicted noise
             # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 4, Latents_Height, Latents_Width)
-            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+            with torch.autocast(device_type="cuda", dtype=torch.float16):
                 model_output = diffusion(model_input, context, time_embedding)
 
             if do_cfg:

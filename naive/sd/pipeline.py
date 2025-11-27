@@ -111,7 +111,7 @@ def generate(prompt: str,
             to_idle(encoder)
         else:
             # (Batch_Size, 4, Latents_Height, Latents_Width)
-            latents = torch.randn(latents_shape, generator=generator, device=device)
+            latents = torch.randn(latents_shape, generator=generator, device=device).to(torch.bfloat16)
 
         diffusion = models["diffusion"].to(device)
         if is_torchcompile:

@@ -33,7 +33,7 @@ def preload_models_from_standard_weights(ckpt_path, device):
             print("Dropping unexpected diffusion key:", k)
             state_dict['diffusion'].pop(k)
     diffusion.load_state_dict(state_dict['diffusion'], strict=True)
-    diffusion = quantize_(diffusion, int8_weight_only())
+    quantize_(diffusion, int8_weight_only())
 
     clip = CLIP().to(device)
     for k in list(state_dict['clip'].keys()):

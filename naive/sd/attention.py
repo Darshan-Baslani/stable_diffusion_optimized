@@ -74,14 +74,14 @@ class SelfAttention(nn.Module):
         # logging.debug(f'self-attention: output after attention: {output.shape}')
         
         # flash attention
-        with torch.backends.cuda.sdp_kernel(enable_flash=True,
-                                            enable_math=False,
-                                            enable_mem_efficient=True):
-            output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
-        
-        # for running on remote srever with newer gpu
-        # with nn.attention.sdpa_kernel(nn.attention.SDPBackend.FLASH_ATTENTION):
+        # with torch.backends.cuda.sdp_kernel(enable_flash=True,
+        #                                     enable_math=False,
+        #                                     enable_mem_efficient=True):
         #     output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
+
+        # for running on remote srever with newer gpu
+        with nn.attention.sdpa_kernel(nn.attention.SDPBackend.FLASH_ATTENTION):
+            output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
         
         # (Batch_Size, H, Seq_Len, Dim / H) -> (Batch_Size, Seq_Len, H, Dim / H)
         output = output.transpose(1, 2) 

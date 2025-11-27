@@ -133,7 +133,8 @@ def generate(prompt: str,
 
             # model_output is the predicted noise
             # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 4, Latents_Height, Latents_Width)
-            model_output = diffusion(model_input.to(torch.bfloat16), context.to(torch.bfloat16), time_embedding.to(torch.bfloat16))
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                model_output = diffusion(model_input, context, time_embedding)
 
             if do_cfg:
                 output_cond, output_uncond = model_output.chunk(2)

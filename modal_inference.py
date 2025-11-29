@@ -29,3 +29,24 @@ def infer():
     print("STDOUT:", result.stdout)
     print("STDERR:", result.stderr)
 
+    with open("shape_log.txt", "r") as f:
+        log_file = f.read()
+    with open("output.png", "rb") as f:
+        output_img = f.read()
+
+    return {"log_file"  : log_file,
+            "output_img": output_img}
+
+@app.local_entrypoint()
+def main():
+    print("starting inference")
+    results = infer.remote()
+
+    # Save to your local file system
+    with open("output.png", "wb") as f:
+        f.write(results["output_img"])
+    
+    with open("log_shape.log", "w") as f:
+        f.write(results["log_file"])
+        
+    print("output and log file saved")

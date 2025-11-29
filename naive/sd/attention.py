@@ -40,9 +40,9 @@ class SelfAttention(nn.Module):
 
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, Dim * 3) -> 3 tensor of shape (Batch_Size, Seq_Len, Dim)
         q, k, v = self.in_proj(x).chunk(3, dim=-1)
-        logging.debug(f'self-attention: q shape: {q.shape}')
-        logging.debug(f'self-attention: k shape: {k.shape}')
-        logging.debug(f'self-attention: v shape: {v.shape}')
+        logging.debug(f'self-attention: q shape, dtype: {q.shape}, {q.dtype}')
+        logging.debug(f'self-attention: k shape, dtype: {k.shape}, {k.dtype}')
+        logging.debug(f'self-attention: v shape, dtype: {v.shape}, {v.dtype}')
 
         # (Batch_Size, Seq_Len, Dim) -> (Batch_Size, Seq_Len, H, Dim / H) -> (Batch_Size, H, Seq_Len, Dim / H)
         q = q.view(interim_shape).transpose(1, 2)
@@ -80,9 +80,13 @@ class SelfAttention(nn.Module):
         #     output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
 
         # for running on remote srever with newer gpu
-        with nn.attention.sdpa_kernel(nn.attention.SDPBackend.FLASH_ATTENTION):
-            output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
-        
+        if q.size(-1) <= 256:
+            with nn.attention.sdpa_kernel(nn.attention.SDPBackend.FLASH_ATTENTION):
+                output = F.scaled_dot_product_attention(q, k, v, is_causal=casual_mask)
+        else:
+            with nn.attention.sdpa_kernel(nn.attention.SDPBackend.MATH):
+                output = F.scaled_dot_product_attention(q,k,v, is_causal=casual_mask)
+ 
         # (Batch_Size, H, Seq_Len, Dim / H) -> (Batch_Size, Seq_Len, H, Dim / H)
         output = output.transpose(1, 2) 
         logging.debug(f'self-attention: output after transpose: {output.shape}')
